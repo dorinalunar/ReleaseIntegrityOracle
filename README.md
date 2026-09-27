@@ -2,6 +2,7 @@
 [![GenLayer](https://img.shields.io/badge/Platform-GenLayer-blue.svg)](https://genlayer.com)
 [![Language](https://img.shields.io/badge/Language-Python%203.11-yellow.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 An Intelligent Contract deployed on GenLayer that validates whether a GitHub release truthfully discloses real source changes. By combining deterministic git diff retrieval with non-deterministic LLM consensus (GenVM), `ReleaseIntegrityOracle` detects hidden logic alterations, undeclared dependency shifts, configuration tampering, and omitted critical disclosures.
 ---
 ## Architecture Overview
