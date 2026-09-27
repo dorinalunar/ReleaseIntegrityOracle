@@ -1,0 +1,12 @@
+{
+  "schema": "release-integrity/v1",
+  "repository": "dorinalunar/ReleaseIntegrityOracle",
+  "base_commit": "e83c5163316f89bfbde7d9ab23ca2e25604af290",
+  "target_commit": "b0769b0fa525287b927dfa5eb3bc5ed0c1840f1a",
+  "release_tag": "v1.0.0",
+  "claimed_scope": "GENERAL_RELEASE",
+  "changed_files": [
+    "ReleaseIntegrityOracle.py",
+    "README.md"
+  ]
+}
