@@ -2,18 +2,20 @@
 [![GenLayer](https://img.shields.io/badge/Platform-GenLayer-blue.svg)](https://genlayer.com)
 [![Language](https://img.shields.io/badge/Language-Python%203.11-yellow.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
 An Intelligent Contract deployed on GenLayer that validates whether a GitHub release truthfully discloses real source changes. By combining deterministic git diff retrieval with non-deterministic LLM consensus (GenVM), `ReleaseIntegrityOracle` detects hidden logic alterations, undeclared dependency shifts, configuration tampering, and omitted critical disclosures.
 ---
-## Architecture Overview
+## Architecture & Consensus Security
 Traditional code releases rely on blind trust: users must assume that release notes accurately reflect actual code diffs. `ReleaseIntegrityOracle` eliminates this gap by processing git diffs and attestations on-chain:
 1. **Commit & Attestation Pinning**: Evaluates a specific commit range (`base_commit` to `target_commit`) alongside a canonical SHA-256 attestation file.
 2. **Deterministic Pre-flight Checks**: Fetches raw data from the GitHub API and GitHub Raw endpoints, verifying cryptographic digests, commit boundaries, and changed file lists.
 3. **Optimistic LLM Semantic Classification**: Leverages GenVM non-deterministic prompts to audit code patches against claimed changes (authorization, asset flows, dependencies, configuration).
-4. **Resilient Consensus Layer**: Validators independently verify data payload digests (`evidence_digest`) to guard against API drift while confirming semantic integrity without brittle string mismatches.
+4. **Strict Validator Consensus**: To prevent consensus drift and conflicting state outcomes, the oracle requires all network validators to independently agree on the following before state is committed:
+    * **Evidence Digest:** Cryptographic hashes of all fetched external data.
+    * **Decision-Bearing Fields:** Every semantic classification evaluated by the LLM (`authorization_change`, `asset_flow_change`, `disclosure_alignment`, etc.).
+    * **Derived State:** The final assessment verdict (`ACCURATE`, `OMISSION_DETECTED`, etc.) is independently recomputed and verified by each validator.
 ---
 ## Contract State Flow
-```
+```text
 [ SEALED ] 
     │
     ▼ (evaluate_assessment)
@@ -68,7 +70,7 @@ def retry_assessment(assessment_id: u256) -> None
 - **`get_config() -> dict`**: Returns protocol configuration limits and global assessment count.
 ---
 ## Attestation File Schema
-Projects integrating with `ReleaseIntegrityOracle` include an attestation file (e.g., `.covenant/attestation.json`) pinned at `attestation_commit`:
+Projects integrating with `ReleaseIntegrityOracle` include an attestation file (e.g., `.covenant/attest.json`) pinned at `attestation_commit`:
 ```json
 {
   "schema": "release-integrity/v1",
@@ -88,16 +90,26 @@ The corresponding GitHub Release body must contain the attestation digest line:
 disclosure_attestation_sha256: <64_character_hex_sha256>
 ```
 ---
+## Development & Testing
+The repository includes a fully mocked `pytest` suite simulating GenVM environment variables and decorators without requiring network access.
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pytest test_oracle.py -v
+```
+---
 ## Deployment & Verification
 ### Prerequisites
 - Python 3.11+
 - `genlayer-py` runtime
 - GenLayer Studio or CLI client
-### Deployment via GenLayer CLI
+### Deployment via Script
+Use the included deployment script to deploy the oracle to the GenLayer network:
 ```bash
-genlayer deploy \
-  --contract contracts/ReleaseIntegrityOracle.py \
-  --network studio
+cp .env.example .env
+# Add your GENLAYER_PRIVATE_KEY to .env
+python scripts/deploy.py
 ```
 ---
 ## Security Model
