@@ -1,14 +1,19 @@
 import pytest
 import hashlib
 from unittest.mock import patch, MagicMock
-
-# Mocking GenLayer environment variables and decorators for local testing
 import sys
+import builtins
+
+# Create a real empty class so Python can inherit from it normally
+class MockContract:
+    pass
+
+# Configure mocks for GenLayer
 mock_gl = MagicMock()
+mock_gl.Contract = MockContract  # Specify that the base class is a real object
 mock_gl.vm.UserError = ValueError
 mock_gl.message.sender_address = "0x1234567890abcdef1234567890abcdef12345678"
 
-# Mock decorators so the contract can be imported locally without the GenVM
 def mock_decorator(func):
     return func
 
@@ -16,15 +21,14 @@ mock_gl.public.write = mock_decorator
 mock_gl.public.view = mock_decorator
 sys.modules['genlayer'] = mock_gl
 
-import builtins
 builtins.allow_storage = mock_decorator
 builtins.TreeMap = dict
 builtins.u256 = int
 builtins.u8 = int
 builtins.Address = str
-builtins.gl = mock_gl  # Вирішує проблему NameError: name 'gl' is not defined
+builtins.gl = mock_gl
 
-# Import the contract after mocking
+# Import the contract ONLY AFTER all mocks have been configured
 from ReleaseIntegrityOracle import ReleaseIntegrityOracle, SEALED, VERSION
 
 @pytest.fixture
