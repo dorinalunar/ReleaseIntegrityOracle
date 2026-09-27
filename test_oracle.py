@@ -29,7 +29,7 @@ builtins.Address = str
 builtins.gl = mock_gl
 
 # Import the contract ONLY AFTER all mocks have been configured
-from ReleaseIntegrityOracle import ReleaseIntegrityOracle, SEALED, VERSION
+from ReleaseIntegrityOracle import ReleaseIntegrityOracle, SEALED, VERSION, ACCURATE
 
 @pytest.fixture
 def contract():
@@ -39,6 +39,23 @@ def contract():
     oracle.attempts = {}
     oracle.replay = {}
     return oracle
+
+@pytest.fixture
+def valid_consensus_result():
+    """Fixture providing a mock result for run_nondet_unsafe to simulate successful consensus."""
+    return {
+        "source_status": "VERIFIED",
+        "compare_binding": "MATCH",
+        "attestation_binding": "MATCH",
+        "file_coverage": "MATCH",
+        "release_binding": "MATCH",
+        "authorization_change": "NO",
+        "asset_flow_change": "NO",
+        "dependency_change": "NO",
+        "configuration_change": "NO",
+        "disclosure_alignment": "MATCH",
+        "evidence_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
 
 def test_initial_state(contract):
     """Test if the contract initializes correctly."""
@@ -125,3 +142,45 @@ def test_get_assessment_not_found(contract):
     """Test reading an assessment that does not exist."""
     with pytest.raises(ValueError, match="ASSESSMENT_NOT_FOUND"):
         contract.get_assessment(999)
+
+def test_evaluate_assessment_success(contract, valid_consensus_result):
+    """Test the new _evaluate consensus logic successfully matching fields."""
+    assessment_id = contract.open_assessment(
+        owner="genlayer",
+        repository="core",
+        base_commit="a" * 40,
+        target_commit="b" * 40,
+        attestation_commit="c" * 40,
+        attestation_path=".covenant/attest.json",
+        attestation_sha256="d" * 64,
+        release_tag="v1.0.0"
+    )
+    
+    # Mock the run_nondet_unsafe method to return our valid simulated consensus
+    with patch.object(builtins.gl.vm, 'run_nondet_unsafe', return_value=valid_consensus_result):
+        contract.evaluate_assessment(assessment_id)
+        
+    record = contract.get_assessment(assessment_id)
+    assert record.state == ACCURATE
+    assert record.attempt_count == 1
+    assert record.evidence_digest == valid_consensus_result["evidence_digest"]
+
+def test_evaluate_assessment_consensus_failure(contract):
+    """Test evaluation failure when GenVM consensus validation fails."""
+    assessment_id = contract.open_assessment(
+        owner="genlayer",
+        repository="core",
+        base_commit="a" * 40,
+        target_commit="b" * 40,
+        attestation_commit="c" * 40,
+        attestation_path=".covenant/attest.json",
+        attestation_sha256="d" * 64,
+        release_tag="v1.0.0"
+    )
+    
+    # Provide an invalid dict that fails the valid() check inside run_nondet_unsafe simulation
+    invalid_result = {"source_status": "INVALID_FORMAT"} 
+    
+    with patch.object(builtins.gl.vm, 'run_nondet_unsafe', return_value=invalid_result):
+        with pytest.raises(ValueError, match="CONSENSUS_VALIDATION_FAILED"):
+            contract.evaluate_assessment(assessment_id)
