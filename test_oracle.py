@@ -15,12 +15,14 @@ def mock_decorator(func):
 mock_gl.public.write = mock_decorator
 mock_gl.public.view = mock_decorator
 sys.modules['genlayer'] = mock_gl
+
 import builtins
 builtins.allow_storage = mock_decorator
 builtins.TreeMap = dict
 builtins.u256 = int
 builtins.u8 = int
 builtins.Address = str
+builtins.gl = mock_gl  # Вирішує проблему NameError: name 'gl' is not defined
 
 # Import the contract after mocking
 from ReleaseIntegrityOracle import ReleaseIntegrityOracle, SEALED, VERSION
