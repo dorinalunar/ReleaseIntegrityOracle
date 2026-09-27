@@ -335,6 +335,20 @@ class ReleaseIntegrityOracle(gl.Contract):
                 if leader["evidence_digest"] != validator["evidence_digest"]:
                     return False
             
+            decision_fields = [
+                "compare_binding", "attestation_binding", "file_coverage", 
+                "release_binding", "authorization_change", "asset_flow_change", 
+                "dependency_change", "configuration_change", "disclosure_alignment"
+            ]
+            for field in decision_fields:
+                if leader.get(field) != validator.get(field):
+                    return False
+                    
+            leader_state, _ = derive(leader)
+            validator_state, _ = derive(validator)
+            if leader_state != validator_state:
+                return False
+            
             return True
 
         result = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
